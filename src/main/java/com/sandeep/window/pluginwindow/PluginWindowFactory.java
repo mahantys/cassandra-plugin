@@ -85,7 +85,12 @@ public class PluginWindowFactory implements ToolWindowFactory {
             String[] tokens = connectionDetail.split(";");
             Connection connection = new Connection(tokens[0], tokens[1]);
             // TODO: make this parallel
-            connection.setKeyspaces(DBUtil.getKeyspaces(connection.getHost()));
+            try {
+                connection.setKeyspaces(DBUtil.getKeyspaces(connection.getHost()));
+            } catch (Exception ex) {
+                log.error(ex.getMessage());
+                Messages.showMessageDialog(project, "Unable to connect to : " + tokens[1] + " due to " + ex.getMessage(), "Getting connection details", Messages.getErrorIcon());
+            }
             connectionList.add(connection);
         }
 
@@ -106,7 +111,7 @@ public class PluginWindowFactory implements ToolWindowFactory {
                     String table = String.valueOf(tp.getPath()[3]);
                     ExecutorService service = Executors.newCachedThreadPool();
                     Future<Table> tableFuture = service.submit(new AsyncQueryExecutor(host, "select * from " + schema + "." + table));
-
+                    //TODO: Allow filtering on the basis of columns
                     try {
                         Table tableData = tableFuture.get();
                         log.info("Table:" + tableData);
@@ -185,16 +190,17 @@ public class PluginWindowFactory implements ToolWindowFactory {
         for (Connection connection : connectionList) {
             DefaultMutableTreeNode conn = new DefaultMutableTreeNode(connection.getName());
             List<KeyspaceMetadata> keyspaces = connection.getKeyspaces();
+            if (keyspaces != null) {
+                for (KeyspaceMetadata keyspaceMetadata : keyspaces) {
+                    DefaultMutableTreeNode keyspaceNode = new DefaultMutableTreeNode(keyspaceMetadata.getName());
+                    List<TableMetadata> tablesMetadata = keyspaceMetadata.getTables().stream().collect(Collectors.toList());
 
-            for (KeyspaceMetadata keyspaceMetadata : keyspaces) {
-                DefaultMutableTreeNode keyspaceNode = new DefaultMutableTreeNode(keyspaceMetadata.getName());
-                List<TableMetadata> tablesMetadata = keyspaceMetadata.getTables().stream().collect(Collectors.toList());
-
-                for (TableMetadata tableMetadata : tablesMetadata) {
-                    DefaultMutableTreeNode tableNode = new DefaultMutableTreeNode(tableMetadata.getName());
-                    keyspaceNode.add(tableNode);
+                    for (TableMetadata tableMetadata : tablesMetadata) {
+                        DefaultMutableTreeNode tableNode = new DefaultMutableTreeNode(tableMetadata.getName());
+                        keyspaceNode.add(tableNode);
+                    }
+                    conn.add(keyspaceNode);
                 }
-                conn.add(keyspaceNode);
             }
             model.insertNodeInto(conn, root, root.getChildCount());
         }

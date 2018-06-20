@@ -24,7 +24,6 @@ public class DBUtil {
                     .addContactPoint(hostPort)
                     .build();
             Session session = cluster.connect();
-
             ResultSet rs = session.execute(query);
             Row row = rs.one();
             log.info(row.getString("release_version"));
@@ -39,25 +38,22 @@ public class DBUtil {
         }
     }
 
-    public static List<KeyspaceMetadata> getKeyspaces(String hostPort) {
+    public static List<KeyspaceMetadata> getKeyspaces(String hostPort) throws Exception {
         Cluster cluster = null;
         try {
             cluster = Cluster.builder()
                     .addContactPoint(hostPort)
                     .build();
             cluster.connect();
+            log.info("COnfig: " + cluster.getMetadata());
             List<KeyspaceMetadata> keyspaceNames = cluster.getMetadata().getKeyspaces();
             log.info("Discovered keyspaces " + keyspaceNames);
             return keyspaceNames;
-        } catch (Exception ex) {
-            log.error("Failed to connect to " + hostPort + " due to " + ex.getMessage());
-
         } finally {
             if (cluster != null) {
                 cluster.close();
             }
         }
-        return null;
     }
 
     public static ResultSet executeQuery(String hostPort, String query) {
@@ -67,6 +63,7 @@ public class DBUtil {
                     .addContactPoint(hostPort)
                     .build();
             Session session = cluster.connect();
+            log.info("COnfig: " + cluster.getConfiguration());
             ResultSet rs = session.execute(query);
             return rs;
         } catch (Exception ex) {
@@ -77,9 +74,5 @@ public class DBUtil {
             }
         }
         return null;
-    }
-
-    public static void main(String[] args) {
-        System.out.println(getKeyspaces("127.0.0.1"));
     }
 }
